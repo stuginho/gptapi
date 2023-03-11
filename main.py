@@ -2,17 +2,30 @@ import os
 import openai
 from dotenv import load_dotenv
 from colorama import Fore, Back, Style
+import sys
+import subprocess
+
+sys.stdout.reconfigure(encoding='utf-8')
+os.environ["LANG"] = "en_US.utf8"
 
 # load values from the .env file if it exists
 load_dotenv()
 
+
 # configure OpenAI
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-INSTRUCTIONS = """<<PUT THE PROMPT HERE>>"""
+INSTRUCTIONS = prompt = """Vastaa 
+kysymyksiin 
+koodista 
+ja 
+luo 
+koodia 
+annetuilla
+ohjeilla"""
 
 TEMPERATURE = 0.5
-MAX_TOKENS = 500
+MAX_TOKENS = 2000
 FREQUENCY_PENALTY = 0
 PRESENCE_PENALTY = 0.6
 # limits how many questions we include in the prompt
@@ -51,6 +64,7 @@ def get_response(instructions, previous_questions_and_answers, new_question):
         presence_penalty=PRESENCE_PENALTY,
     )
     return completion.choices[0].message.content
+    
 
 
 def get_moderation(question):
@@ -82,6 +96,40 @@ def get_moderation(question):
         ]
         return result
     return None
+def kysymys():
+    kys = input(Fore.LIGHTMAGENTA_EX + Style.BRIGHT +"Haluatko kysyä? k/e: " + Style.RESET_ALL)
+    if kys == "k":
+
+    
+        with open("chatgpt_question.txt", "w" , encoding="utf-8") as f:
+            f.write("")
+
+        try:
+            # Open the nano editor with the question prompt
+            nano_process = subprocess.Popen(["nano", "+1", "-c","-u",  "chatgpt_question.txt"],)
+
+            nano_process.communicate()
+        finally:
+            # Close the file
+            if 'f' in locals():
+                f.close()
+
+            # Terminate the nano process if it's still running
+            if nano_process.poll() is None:
+                nano_process.terminate()
+
+        # Read the user's input from the file
+        with open("chatgpt_question.txt", "r" , encoding="utf-8") as f:
+            input_text = f.read().strip()
+
+        return input_text
+    elif kys == "e":
+        print(Fore.RED + Style.BRIGHT + "Heippa rakas <3 "  + Style.RESET_ALL)
+        exit()
+
+
+
+
 
 
 def main():
@@ -90,28 +138,35 @@ def main():
     previous_questions_and_answers = []
     while True:
         # ask the user for their question
-        new_question = input(
-            Fore.GREEN + Style.BRIGHT + "What can I get you?: " + Style.RESET_ALL
-        )
-        # check the question is safe
-        errors = get_moderation(new_question)
-        if errors:
-            print(
-                Fore.RED
-                + Style.BRIGHT
-                + "Sorry, you're question didn't pass the moderation check:"
-            )
-            for error in errors:
-                print(error)
-            print(Style.RESET_ALL)
+        new_question = kysymys()
+
+        try:
+            # check the question is safe
+            errors = get_moderation(new_question)
+            if errors:
+                print(
+                    Fore.RED
+                    + Style.BRIGHT
+                    + "Sori tos oli jotain törkeetä"
+                )
+                for error in errors:
+                    print(error)
+                print(Style.RESET_ALL)
+                continue
+
+            # get response from GPT-3
+            response = get_response(INSTRUCTIONS, previous_questions_and_answers, new_question)
+
+        except Exception as e:
+            print(Fore.RED + Style.BRIGHT + "Jotain meni vikaan: " + str(e) + Style.RESET_ALL)
             continue
-        response = get_response(INSTRUCTIONS, previous_questions_and_answers, new_question)
 
         # add the new question and answer to the list of previous questions and answers
         previous_questions_and_answers.append((new_question, response))
 
         # print the response
-        print(Fore.CYAN + Style.BRIGHT + "Here you go: " + Style.NORMAL + response)
+        print(Fore.CYAN + Style.BRIGHT + "Vastaukseni " + Style.NORMAL + response)
+
 
 
 if __name__ == "__main__":
